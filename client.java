@@ -1,6 +1,6 @@
 import java.io.*;  
 import java.net.*;  
-public class MyClient {  
+public class MyClient {
     public static void main(String[] args) {  
     try{      
 		Socket s=new Socket("localhost",50000);  
@@ -16,8 +16,11 @@ public class MyClient {
 		command = br.readLine();
 		System.out.println(command);
 
+
 		dout.write(("REDY\n").getBytes());
 		command = br.readLine();
+		String j = command.toString();
+		String[] job = j.split(" ");
 		System.out.println(command);
 
 		dout.write(("GETS All\n").getBytes());
@@ -26,21 +29,31 @@ public class MyClient {
 		
 		
 		String serverInfo = command.toString();
-		String[] serverInfoArray = serverInfo.split(" ");
-		
+		String[] serverInfoArray = serverInfo.split(" ");		
 		int numServers = Integer.valueOf(serverInfoArray[1]);
 		
 		String[] servers = new String[numServers];
 		for(int i = 0; i < numServers; i++) {
-			dout.write(("OK\n").getBytes());
 			command = br.readLine();
 			servers[i] = command.toString();
 			System.out.println(command);
 		}
-
-		System.out.println(findLargestType(servers)[0]);
+		String largestServerType = findLargestType(servers);
+		int largestServerTypeCount = largestServerCount(servers, largestServerType);
+	
 		
+		String toSend  = "SCHD " + job[2] + " " + largestServerType + " " + 0%largestServerTypeCount + "\n";
+		dout.write(toSend.getBytes());
 
+		
+		dout.write(("REDY\n").getBytes());	
+		command = br.readLine();
+		System.out.println(command);
+		
+		dout.write(("REDY\n").getBytes());	
+		command = br.readLine();
+		System.out.println(command);
+		
 		dout.write(("QUIT\n").getBytes());
 		dout.flush();
 		dout.close();
@@ -50,32 +63,26 @@ public class MyClient {
     }
     
     
-    static String[] findLargestType(String[] s) {
-    	int serverTypeCount = 0;
-		int largestServerSize = 0;
+    static String findLargestType(String[] s) {
+	int largestServerSize = 0;
     	String serverType = "";
-    	for(String string : s) {
-    		if (getServerSize(string) > largestServerSize) {
-    			largestServerSize = getServerSize(string);
-    			if(serverType == getServerType(string)) {
-    				serverTypeCount += 1;
-    			}
-    			else {
-    				serverTypeCount = 1;
-    			}
-    		}
-    	}
-    	String[] serverArray = new String[serverTypeCount];
     	for(String server : s) {
-    		int count = 0;
-    		String tempServerType = getServerType(server);
-    		if(tempServerType == serverType) {
-    			serverArray[count] = server;
-    			count++;
-	    		System.out.println(tempServerType);
+    		if (getServerSize(server) > largestServerSize) {
+    			serverType = getServerType(server);
+
     		}
     	}
-		return serverArray;
+	return serverType;
+    }
+    
+    static int largestServerCount(String[] servers, String serverType) {
+    	int count = 0;
+    	for(String server : servers) {
+    		if(serverType.equals(getServerType(server))) {
+    			count++;
+    		}
+    	}
+    	return count;
     }
     
     static int getServerSize(String server) {
