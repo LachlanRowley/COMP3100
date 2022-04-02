@@ -19,8 +19,7 @@ public class MyClient {
 
 		dout.write(("REDY\n").getBytes());
 		command = br.readLine();
-		String j = command.toString();
-		String[] job = j.split(" ");
+
 		System.out.println(command);
 
 		dout.write(("GETS All\n").getBytes());
@@ -31,29 +30,37 @@ public class MyClient {
 		String serverInfo = command.toString();
 		String[] serverInfoArray = serverInfo.split(" ");		
 		int numServers = Integer.valueOf(serverInfoArray[1]);
-		
+		dout.write(("OK\n").getBytes());
 		String[] servers = new String[numServers];
+		System.out.println(numServers);
 		for(int i = 0; i < numServers; i++) {
 			command = br.readLine();
-			servers[i] = command.toString();
 			System.out.println(command);
+			servers[i] = command.toString();
 		}
-		String largestServerType = findLargestType(servers);
-		int largestServerTypeCount = largestServerCount(servers, largestServerType);
-	
-		
-		String toSend  = "SCHD " + job[2] + " " + largestServerType + " " + 0%largestServerTypeCount + "\n";
-		dout.write(toSend.getBytes());
 
-		
-		dout.write(("REDY\n").getBytes());	
+		dout.write(("OK\n").getBytes());
 		command = br.readLine();
 		System.out.println(command);
-		
-		dout.write(("REDY\n").getBytes());	
-		command = br.readLine();
-		System.out.println(command);
-		
+
+		String largestServerType = findLargestType(servers);
+//		System.out.println(largestServerType);
+		int largestServerTypeCount = largestServerCount(servers, largestServerType);
+//		System.out.println(largestServerTypeCount);
+		dout.write(("REDY\n").getBytes());
+		while(!(command = br.readLine()).equals("NONE")) {
+			System.out.println(command);
+			String j = command.toString();
+			String[] job = j.split(" ");
+			if(job[0].equals("JOBN")) {
+//				System.out.println(command);
+				String toSend  = "SCHD " + job[2] + " " + largestServerType + " " + 0%largestServerTypeCount +"\n";
+				dout.write(toSend.getBytes());
+				while(!(command = br.readLine()).equals("OK")) {}
+			}
+			dout.write(("REDY\n").getBytes());
+		}
+
 		dout.write(("QUIT\n").getBytes());
 		dout.flush();
 		dout.close();
