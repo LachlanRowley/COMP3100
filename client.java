@@ -19,8 +19,12 @@ public class MyClient {
 
 		dout.write(("REDY\n").getBytes());
 		command = br.readLine();
-
 		System.out.println(command);
+		int jobCount = 0;
+		String j = command.toString();
+		String[] job = j.split(" ");
+
+
 
 		dout.write(("GETS All\n").getBytes());
 		command = br.readLine();
@@ -47,15 +51,24 @@ public class MyClient {
 //		System.out.println(largestServerType);
 		int largestServerTypeCount = largestServerCount(servers, largestServerType);
 //		System.out.println(largestServerTypeCount);
+
+		if(job[0].equals("JOBN")) {
+			String toSend  = "SCHD " + job[2] + " " + largestServerType + " " + jobCount%largestServerTypeCount +"\n";
+			dout.write(toSend.getBytes());
+			jobCount++;
+			while(!(command = br.readLine()).equals("OK")) {}
+		}
 		dout.write(("REDY\n").getBytes());
+
 		while(!(command = br.readLine()).equals("NONE")) {
 			System.out.println(command);
-			String j = command.toString();
-			String[] job = j.split(" ");
+			j = command.toString();
+			job = j.split(" ");
 			if(job[0].equals("JOBN")) {
 //				System.out.println(command);
-				String toSend  = "SCHD " + job[2] + " " + largestServerType + " " + 0%largestServerTypeCount +"\n";
+				String toSend  = "SCHD " + job[2] + " " + largestServerType + " " + jobCount%largestServerTypeCount +"\n";
 				dout.write(toSend.getBytes());
+				jobCount++;
 				while(!(command = br.readLine()).equals("OK")) {}
 			}
 			dout.write(("REDY\n").getBytes());
@@ -76,7 +89,7 @@ public class MyClient {
     	for(String server : s) {
     		if (getServerSize(server) > largestServerSize) {
     			serverType = getServerType(server);
-
+    			largestServerSize = getServerSize(server);
     		}
     	}
 	return serverType;
