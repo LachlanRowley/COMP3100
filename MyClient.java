@@ -48,9 +48,8 @@ public class MyClient {
 		System.out.println(command);
 
 		String largestServerType = findLargestType(servers);
-//		System.out.println(largestServerType);
 		int largestServerTypeCount = largestServerCount(servers, largestServerType);
-//		System.out.println(largestServerTypeCount);
+
 
 		if(job[0].equals("JOBN")) {
 			String toSend  = "SCHD " + job[2] + " " + largestServerType + " " + jobCount%largestServerTypeCount +"\n";
@@ -65,7 +64,6 @@ public class MyClient {
 			j = command.toString();
 			job = j.split(" ");
 			if(job[0].equals("JOBN")) {
-//				System.out.println(command);
 				String toSend  = "SCHD " + job[2] + " " + largestServerType + " " + jobCount%largestServerTypeCount +"\n";
 				dout.write(toSend.getBytes());
 				jobCount++;
