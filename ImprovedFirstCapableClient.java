@@ -10,7 +10,7 @@ import java.net.*;
 */
 
 
-public class DoubleSizeClient {
+public class ImprovedFirstCapableClient {
     public static void main(String[] args) {  
     try{   
 
@@ -82,7 +82,18 @@ public class DoubleSizeClient {
 				dout.write(("OK\n").getBytes());
 				//Gets the first capable server
 				String server = br.readLine();
-				server = getFirstCapableServer(server, numServers, coresRequired, br, dout);
+
+				String newServer = "";
+				if(getServerStatus(server).equals("inactive") || getServerSize(server) < coresRequired) {
+					for(int i = 1; i < numServers; i++) {
+						command = br.readLine();
+						if (getServerSize(command) >= coresRequired) {
+							server = command;
+							break;
+						}
+					}
+				}
+				System.out.println(server);
 				dout.write(("OK\n").getBytes());
 				
 				String toSend  = "SCHD " + getJobID(j) + " " + getServerType(server) + " " + getServerID(server) + "\n";
@@ -165,36 +176,15 @@ public class DoubleSizeClient {
 	String[] jobInfo = job.split(" ");
 	return Integer.valueOf(jobInfo[2]);
     }
-
-	static String getFirstCapableServer(String server, int numServers, int coresRequired, BufferedReader br, DataOutputStream dout) {
-		try{
-			int lowestWaitingTime = -1;
-			String serverPriority2;
-			//Checks if the first server is not capable of immediately running the job
-			if(getServerStatus(server).equals("inactive") || getServerSize(server) < coresRequired) {
-				int largestServerSize = getServerSize(server);
-				//Iterates through every server
-				for(int i = 1; i < numServers; i++) {
-					String command = br.readLine();
-					if(getServerSize(command) >= largestServerSize) {
-						largestServerSize = getServerSize(command);
-					}
-					else {
-						continue;
-					}
-					server = command;
-					if (!getServerStatus(command).equals("inactive") && getServerSize(server) >= coresRequired) {
-						break;
-					}
-					
-					if(getServerSize(command) == coresRequired * 2) {
-						break;
-					}
-				}
-			}
-		}
-		catch(Exception e){System.out.println(e);}
-		return server;
-	}
-
+    
+    static int findNearestPowerTwo(int num, int max) {
+    	int power = 1;
+    	while(power < num) {
+    		power *= 2;
+    	}
+    	if (power > max) {
+    		return max;
+    	}
+    	return power;
+    }
 }  

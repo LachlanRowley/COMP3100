@@ -82,12 +82,17 @@ public class DoubleSizeClient {
 				dout.write(("OK\n").getBytes());
 				//Gets the first capable server
 				String server = br.readLine();
-				server = getFirstCapableServer(server, numServers, coresRequired, br, dout);
+				String[] capableServer = getFirstCapableServer(server, numServers, coresRequired, br, dout);
+				server = capableServer[0];
 				dout.write(("OK\n").getBytes());
 				
 				String toSend  = "SCHD " + getJobID(j) + " " + getServerType(server) + " " + getServerID(server) + "\n";
 				dout.write(toSend.getBytes());
 				while(!(command = br.readLine()).equals("OK")) {}
+				if(capableServer[1] != "-1") {
+					String toSend  = "KILJ " + getServerType(server) + " " + getServerID(server) + " " + Integer.valueOf(capableServer[1]) + "\n";
+					dout.write(toSend.getBytes());					
+				}
 			}
 			dout.write(("REDY\n").getBytes());
 		}
@@ -146,30 +151,37 @@ public class DoubleSizeClient {
 
 
     static int getCoresRequired(String job) {
-	String[] jobInfo = job.split(" ");
-	return Integer.valueOf(jobInfo[4]);
+		String[] jobInfo = job.split(" ");
+		return Integer.valueOf(jobInfo[4]);
     }
 
     static int getRamRequired(String job) {
-	String[] jobInfo = job.split(" ");
-	return Integer.valueOf(jobInfo[5]);
+		String[] jobInfo = job.split(" ");
+		return Integer.valueOf(jobInfo[5]);
     }
 
 
     static int getMemoryRequired(String job) {
-	String[] jobInfo = job.split(" ");
-	return Integer.valueOf(jobInfo[6]);
+		String[] jobInfo = job.split(" ");
+		return Integer.valueOf(jobInfo[6]);
     }
     
     static int getJobID(String job) {
-	String[] jobInfo = job.split(" ");
-	return Integer.valueOf(jobInfo[2]);
+		String[] jobInfo = job.split(" ");
+		return Integer.valueOf(jobInfo[2]);
     }
 
-	static String getFirstCapableServer(String server, int numServers, int coresRequired, BufferedReader br, DataOutputStream dout) {
+	static int getRunningJobs(String server) {
+		String[] serverInfo = server.split(" ");
+		return Integer.valueOf(serverInfo[8]);
+	}
+
+	static String[] getFirstCapableServer(String server, int numServers, int coresRequired, BufferedReader br, DataOutputStream dout) {
 		try{
-			int lowestWaitingTime = -1;
-			String serverPriority2;
+			String serverPriority1 = "";
+			String serverPriority2 = "";
+			String jobtoKill = "";
+			String[] returnArray = {"", ""};
 			//Checks if the first server is not capable of immediately running the job
 			if(getServerStatus(server).equals("inactive") || getServerSize(server) < coresRequired) {
 				int largestServerSize = getServerSize(server);
@@ -180,21 +192,56 @@ public class DoubleSizeClient {
 						largestServerSize = getServerSize(command);
 					}
 					else {
-						continue;
+						if(getRunningJobs(server) == 1 && serverPriority2 == "") {
+							String toSend  = "LSTJ " + getServerType(server) + " " + getServerID(server) + "\n";
+							dout.write(toSend.getBytes());
+							String runningInfo = br.readLine();
+							String[] runningInfoArray = runningInfo.split(" ");
+							dout.write(("OK\n").getBytes());
+							String runningJob = br.readLine();
+							String[] runningJobInfo = runningJob.split(" ");
+							if(runningJobInfo[5] < coresRequired) {
+								serverPriority2 = server;
+								jobtoKill = runningJobInfo[0];
+							}
+							for(int j = 1; i < Integer.valueOf(runningInfoArray[1]); j++) {
+								br.readLine();
+							}
+
+						}
+						else {
+							continue;
+						}
 					}
 					server = command;
 					if (!getServerStatus(command).equals("inactive") && getServerSize(server) >= coresRequired) {
+						serverPriority1 = server;
 						break;
 					}
-					
 					if(getServerSize(command) == coresRequired * 2) {
+						serverPriority1 = server;
 						break;
 					}
 				}
 			}
+			if(serverPriority2 != "" && serverPriority1 = "") {
+				returnArray[0] = serverPriority2;
+				returnArray[1] = jobtoKill;
+				return returnArray;
+
+			}
+			else if(serverPriority1 != "") {
+				returnArray[0] = serverPriority1;
+				returnArray[1] = "-1";
+				return returnArray;
+			}
+			returnArray[0] = server;
+			returnArray[1] = "-1";
+			return returnArray;
+
 		}
 		catch(Exception e){System.out.println(e);}
-		return server;
+		return returnArray;
 	}
 
 }  
