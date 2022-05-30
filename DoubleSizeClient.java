@@ -83,7 +83,7 @@ public class DoubleSizeClient {
 				//Gets the first capable server
 				String server = br.readLine();
 				server = getFirstCapableServer(server, numServers, coresRequired, br, dout);
-				dout.write(("OK\n").getBytes());
+				//dout.write(("OK\n").getBytes());
 				
 				String toSend  = "SCHD " + getJobID(j) + " " + getServerType(server) + " " + getServerID(server) + "\n";
 				dout.write(toSend.getBytes());
@@ -143,6 +143,11 @@ public class DoubleSizeClient {
     	return serverInfo[2];
     }
 
+	static int getWaitingJobCount(String server) {
+    	String[] serverInfo = server.split(" ");
+    	return Integer.valueOf(serverInfo[7]);
+	}
+
 
 
     static int getCoresRequired(String job) {
@@ -166,16 +171,26 @@ public class DoubleSizeClient {
 	return Integer.valueOf(jobInfo[2]);
     }
 
+
+	//Returns the first capable server that is able to run the job immediately.
+	//Otherwise will attempt to find and start and server twice the necessary size.
+	//If the are no available servers, will queue the job on the first server with the lowest wait time
 	static String getFirstCapableServer(String server, int numServers, int coresRequired, BufferedReader br, DataOutputStream dout) {
 		try{
-			int lowestWaitingTime = -1;
-			String serverPriority2;
+			int lowestWaitingTime = 9999999;
+			int lowestWaitingCount = 999;
+			String serverPriority1 = " ";
+			String serverPriority2 = "";
+			String[] serverList = new String[numServers];
+
+			serverList[0] = server;
 			//Checks if the first server is not capable of immediately running the job
 			if(getServerStatus(server).equals("inactive") || getServerSize(server) < coresRequired) {
 				int largestServerSize = getServerSize(server);
 				//Iterates through every server
 				for(int i = 1; i < numServers; i++) {
 					String command = br.readLine();
+					serverList[i] = command;
 					if(getServerSize(command) >= largestServerSize) {
 						largestServerSize = getServerSize(command);
 					}
@@ -183,15 +198,52 @@ public class DoubleSizeClient {
 						continue;
 					}
 					server = command;
+
+					//Stops the loop if it finds a server that is immediately able to run the job 
 					if (!getServerStatus(command).equals("inactive") && getServerSize(server) >= coresRequired) {
-						break;
+						dout.write(("OK\n").getBytes());
+						return server;
 					}
-					
+					//Stops the loop if if finds a server with twice the necessary number of cores available
 					if(getServerSize(command) == coresRequired * 2) {
-						break;
+						dout.write(("OK\n").getBytes());
+						return server;
 					}
 				}
+
+				if(serverPriority1 == "") {
+					dout.write(("OK\n").getBytes());
+					br.readLine();
+					for(int i = 0; i < numServers; i++) {
+						//Gets the estimated wait time of the current server
+						int waitingJobs = getWaitingJobCount(serverList[i]);
+						//Checks if the current server has a lower waiting time than the current lowest
+						//If so, replaces reference to that server with the current
+						if(waitingJobs < lowestWaitingCount) {
+							lowestWaitingCount = waitingJobs;
+							dout.write(("EJWT " + getServerType(serverList[i]) + " " + (getServerID(serverList[i])) + "\n").getBytes());
+							String command = br.readLine();
+							lowestWaitingTime = Integer.valueOf(command);
+							serverPriority2 = serverList[i];
+						}
+						else if(waitingJobs == lowestWaitingCount) {
+							dout.write(("EJWT " + getServerType(serverList[i]) + " " + (getServerID(serverList[i])) + "\n").getBytes());
+							String command = br.readLine();
+							//Checks if the current server has a lower waiting time than the current lowest
+							//If so, replaces reference to that server with the current
+							if(Integer.valueOf(command) < lowestWaitingTime) {
+								lowestWaitingTime = Integer.valueOf(command);
+								serverPriority2 = serverList[i];
+							}
+						}
+					}
+					if(serverPriority2 != "") {
+						server = serverPriority2;
+					}
+					return server;
+				}
 			}
+			dout.write(("OK\n").getBytes());
 		}
 		catch(Exception e){System.out.println(e);}
 		return server;
