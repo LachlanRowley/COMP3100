@@ -21,22 +21,17 @@ public class DoubleSizeClient {
 		String command = "";  
 		dout.write(("HELO\n").getBytes());  
 		command = br.readLine();
-		System.out.println(command);
 
 		String username = System.getProperty("user.name");
 		dout.write(("AUTH " + username +  "\n").getBytes());
 		command = br.readLine();
-		System.out.println(command);
 
 
 		dout.write(("REDY\n").getBytes());
 		command = br.readLine();
 		String j = command.toString();
 		String[] job = j.split(" ");
-		System.out.println(command);
-		//
 
-		int largestServerCores = 0;
 
 		if(job[0].equals("JOBN")) {
 			int coresRequired = getCoresRequired(j);
@@ -49,15 +44,13 @@ public class DoubleSizeClient {
 			//Gets the first capable server
 			String server = br.readLine();
 			boolean doubled = false;
+
+			//Schedules the first job to a server twice (or more) than the necessary size
 			for(int i = 1; i < numServers; i++) {
 				command = br.readLine();
 				if(!doubled && getServerSize(command) >= coresRequired * 2) {
 					doubled = true;
 					server = command;
-				}
-				if(i + 1 == numServers) {
-					largestServerCores = getServerSize(command);
-					System.out.println(largestServerCores);
 				}
 			}
 			dout.write(("OK\n").getBytes());
@@ -69,22 +62,26 @@ public class DoubleSizeClient {
 		}
 		dout.write(("REDY\n").getBytes());
 
+
+		//Loops until all jobs have been scheduled
 		while(!(command = br.readLine()).equals("NONE")) {
 			j = command.toString();
 			job = j.split(" ");
+			//Checks if the command is a job to schedule
 			if(job[0].equals("JOBN")) {
 				int coresRequired = getCoresRequired(j);
+				//Gets all capable servers
 				dout.write(("GETS Capable " + coresRequired + " " + getRamRequired(j) + " " + getMemoryRequired(j) + "\n").getBytes());
 				command = br.readLine();
 				String serverInfo = command.toString();
 				String[] serverInfoArray = serverInfo.split(" ");		
 				int numServers = Integer.valueOf(serverInfoArray[1]);
 				dout.write(("OK\n").getBytes());
-				//Gets the first capable server
+				//Gets the first capable server or server with estimated lowest waiting time
 				String server = br.readLine();
 				server = getFirstCapableServer(server, numServers, coresRequired, br, dout);
-				//dout.write(("OK\n").getBytes());
-				
+
+				//Schedules job to server found earlier				
 				String toSend  = "SCHD " + getJobID(j) + " " + getServerType(server) + " " + getServerID(server) + "\n";
 				dout.write(toSend.getBytes());
 				while(!(command = br.readLine()).equals("OK")) {}
@@ -98,30 +95,6 @@ public class DoubleSizeClient {
 		br.close();  
 		s.close();  
     	}catch(Exception e){System.out.println(e);}
-    }
-    
-    
-    static String findLargestType(String[] s) {
-	int largestServerSize = 0;
-    	String serverType = "";
-    	for(String server : s) {
-    		if (getServerSize(server) > largestServerSize) {
-    			serverType = getServerType(server);
-				largestServerSize = getServerSize(server);
-
-    		}
-    	}
-	return serverType;
-    }
-    
-    static int largestServerCount(String[] servers, String serverType) {
-    	int count = 0;
-    	for(String server : servers) {
-    		if(serverType.equals(getServerType(server))) {
-    			count++;
-    		}
-    	}
-    	return count;
     }
     
     static int getServerSize(String server) {
@@ -210,14 +183,15 @@ public class DoubleSizeClient {
 						return server;
 					}
 				}
-
+				//To compensate for inability for ds-sim to calculate simultaneous jobs in waiting time estimate
+				//Prioritises servers with fewer jobs and then compares estimated waiting time.
 				if(serverPriority1 == "") {
 					dout.write(("OK\n").getBytes());
 					br.readLine();
 					for(int i = 0; i < numServers; i++) {
 						//Gets the estimated wait time of the current server
 						int waitingJobs = getWaitingJobCount(serverList[i]);
-						//Checks if the current server has a lower waiting time than the current lowest
+						//Checks if the current server has the fewer waiting jobs than the current fewest
 						//If so, replaces reference to that server with the current
 						if(waitingJobs < lowestWaitingCount) {
 							lowestWaitingCount = waitingJobs;
@@ -226,6 +200,7 @@ public class DoubleSizeClient {
 							lowestWaitingTime = Integer.valueOf(command);
 							serverPriority2 = serverList[i];
 						}
+
 						else if(waitingJobs == lowestWaitingCount) {
 							dout.write(("EJWT " + getServerType(serverList[i]) + " " + (getServerID(serverList[i])) + "\n").getBytes());
 							String command = br.readLine();
@@ -237,6 +212,7 @@ public class DoubleSizeClient {
 							}
 						}
 					}
+					//Checks if a server was found in the previous loop
 					if(serverPriority2 != "") {
 						server = serverPriority2;
 					}
